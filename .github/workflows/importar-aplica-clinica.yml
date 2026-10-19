@@ -1,0 +1,56 @@
+name: Importar Aplica+ Clinica V4
+on:
+  push:
+    branches:
+      - homologacao/clinica-mobile-completa
+    paths:
+      - 'upload/aplica-mais-clinica-hml-seguranca-v4.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Conferir integridade e conteudo
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="upload/aplica-mais-clinica-hml-seguranca-v4.zip"
+          test -s "$file"
+          printf '%s  %s\n' '1da550b5925db107c77e7a8f8d407aef0e3cb4a28f359f28171704acd26d7603' "$file" | sha256sum --check --status
+          mkdir -p /tmp/aplica-import
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          source=Path('upload/aplica-mais-clinica-hml-seguranca-v4.zip')
+          target=Path('/tmp/aplica-import')
+          with zipfile.ZipFile(source) as archive:
+              names=archive.namelist()
+              required={'src/ConnectedApp.tsx','src/App.tsx','src/style.css','src/main.tsx','src/supabase.ts','package.json','vite.config.ts','index.html'}
+              assert required.issubset(names), 'Arquivos essenciais ausentes'
+              for name in names:
+                  p=Path(name)
+                  assert not p.is_absolute() and '..' not in p.parts and not name.startswith('.github/'), 'Arquivo nao autorizado'
+                  assert not any(part == 'node_modules' for part in p.parts), 'Dependencias nao podem ser enviadas'
+                  assert name not in {'.env','.env.local','.env.production'}, 'Arquivo confidencial nao permitido'
+              archive.extractall(target)
+          PY
+      - name: Aplicar projeto completo na branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s dotglob
+          cp -a /tmp/aplica-import/. .
+          rm -f vite.config.js src/main.jsx src/ClinicalFlows.jsx
+          rm -f .github/workflows/clinical-hml-check.yml
+          rm -rf upload
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat(aplica): importar aplicativo clinico mobile HML V4 completo'
+          git push

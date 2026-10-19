@@ -68,3 +68,5 @@ button{touch-action:manipulation}
 .bottom-nav button{min-height:52px}
 @media(max-width:768px){.content{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}.bottom-nav{padding-bottom:env(safe-area-inset-bottom,0px)}button{min-height:40px}.feature,.patient-row,.settings-row,.primary-button,.hero-button{min-height:48px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.notice-control{position:relative;display:flex;align-items:center}.notice-popover{position:absolute;right:0;top:calc(100% + 12px);width:min(290px,80vw);padding:17px;z-index:50;border-radius:16px;border:1px solid #dde7ec;background:#fff;box-shadow:0 12px 35px rgba(20,43,62,.15);text-align:left}.notice-popover b{color:#142b3e}.notice-popover p{margin:9px 0 12px;color:#617386;font-size:13px}.notice-popover button{padding:9px 13px;color:#005d63;background:#e5f5f2;border-radius:9px;border:0}

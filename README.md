@@ -1,13 +1,15 @@
-# Aplica+ Manaus Mobile — Homologação
+# Aplica+ Manaus — Homologação clínica
 
-Repositório do aplicativo mobile-first (React + TypeScript + Vite, PWA) destinado à homologação **somente com dados fictícios**.
+Frontend React + TypeScript + Vite e PWA instalável. Autenticação profissional pelo Supabase Auth, autorização por funções e vínculos, consulta clínica por RPC e formulários de rascunho para médico, nutricionista e personal. **Somente dados fictícios de pacientes.**
 
-## Estado
+## Desenvolvimento
 
-O repositório foi inicializado para receber o código HML 0.3. **O código da aplicação ainda precisa ser importado** do pacote `aplica-mais-mobile-github-vercel.zip` gerado nesta conversa. Este README sozinho não é uma implantação funcional.
+1. Crie um **novo** projeto Supabase exclusivo para HML, com migrações clínicas autorizadas (não use a produção).
+2. Copie `.env.example` para `.env.local`, preenchendo `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` e `VITE_APLICA_HML_PROJECT_REF` do mesmo projeto HML. Não envie `.env.local` ao GitHub.
+3. Instale as dependências com `npm ci` (quando existir lockfile) ou `npm install` durante desenvolvimento; execute `npm run build` e `npm run dev`.
+4. Configure a Vercel como Vite, build `npm run build`, saída `dist`, variáveis públicas do HML somente em Preview.
+5. Valide permissões, autenticação protegida e operações de prontuário com pacientes sintéticos antes de convidar os avaliadores.
 
-## Implantação
+**Este repositório não fornece um banco HML nem convites de usuários automaticamente.** A versão clínica permanecerá fechada até esse ambiente existir e sua configuração corresponder ao projeto HML.
 
-Importar os arquivos da pasta `aplica-mais-mobile/` para a raiz do repositório. Configurar Vercel com Framework Preset `Vite`, comando `npm run build`, output `dist`, e variáveis publicáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` conforme `.env.example`. Nunca expor `service_role` ou credenciais secretas.
-
-Não sobrescrever a versão em produção antes de compilar, validar as permissões Supabase/RLS e testar no iPhone/Android. Não utilizar dados reais de pacientes nesta homologação.
+Detalhes e checklist de segurança: [SECURITY_HML.md](./SECURITY_HML.md).

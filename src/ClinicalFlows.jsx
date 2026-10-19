@@ -1,0 +1,42 @@
+import React,{useEffect,useState} from 'react';
+
+const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+function Avatar({kind}){const male=kind==='masculino';return <svg role="img" aria-label={'Avatar ilustrativo '+kind} viewBox="0 0 130 175" className="clinic-avatar"><ellipse cx="65" cy="169" rx="39" ry="5" fill="#e6eee8"/><path d="M52 112L46 156M80 112L88 156" stroke="#627c70" strokeWidth="13" strokeLinecap="round"/><path d="M46 61L29 98M84 61L101 98" stroke="#d7af94" strokeWidth="10" strokeLinecap="round"/><path d="M42 61Q65 50 88 61L87 124Q65 132 43 124Z" fill={male?'#789987':'#acbdb1'}/><circle cx="65" cy="40" r="22" fill="#d6b19c"/><path d="M43 34Q40 12 65 12Q89 12 87 34Q70 25 55 27Z" fill={male?'#485b50':'#685349'}/>{!male&&<path d="M42 29Q32 67 41 82M88 29Q99 65 88 82" stroke="#685349" strokeWidth="8" fill="none"/>}<circle cx="57" cy="42" r="2" fill="#34473e"/><circle cx="73" cy="42" r="2" fill="#34473e"/></svg>}
+const selectField=(detail,type)=>Array.isArray(detail?.entries)?detail.entries.find(e=>e.kind==='guidance'&&e.payload?.category===type):null;
+export default function ClinicalFlows({api,role,patient,detail,onSaved}){
+ const defaultType=role==='medico'?'evaluation':role==='nutricionista'?'nutrition_assessment':role==='personal'?'workout':'';
+ const [type,setType]=useState(defaultType),[notes,setNotes]=useState(''),[plan,setPlan]=useState(''),[title,setTitle]=useState(''),[items,setItems]=useState([{name:'',desc:''}]),[nutritionStatus,setNutritionStatus]=useState('nao_avaliado'),[physicalStatus,setPhysicalStatus]=useState('nao_avaliado'),[nutritionDetails,setNutritionDetails]=useState(''),[physicalDetails,setPhysicalDetails]=useState(''),[ack,setAck]=useState(false),[recipient,setRecipient]=useState('medico'),[busy,setBusy]=useState(false),[feedback,setFeedback]=useState('');
+ useEffect(()=>{setType(defaultType);setNotes('');setPlan('');setTitle('');setItems([{name:'',desc:''}]);setAck(false);setFeedback('');setRecipient(role==='medico'?'nutricionista':'medico')},[role,patient?.id]);
+ const options=role==='medico'?[['evaluation','Avaliação médica'],['message','Comunicação com equipe']]:role==='nutricionista'?[['nutrition_assessment','Avaliação nutricional'],['nutrition','Plano alimentar'],['message','Comunicação com equipe']]:role==='personal'?[['workout','Ficha de treino'],['message','Comunicação com equipe']]:[];
+ if(!patient||!options.length)return null;
+ const guiding=selectField(detail,type==='nutrition'?'nutrition':'physical');
+ async function submit(e){e.preventDefault();if(busy)return;setBusy(true);setFeedback('');
+ try{
+  const text=notes.trim(),comment=plan.trim();let payload={};
+  if(type==='evaluation'){
+   if(!text||!comment)throw Error('Preencha avaliação e plano.');
+   if(nutritionStatus==='restricoes'&&!nutritionDetails.trim()||physicalStatus==='restricoes'&&!physicalDetails.trim())throw Error('Descreva as restrições selecionadas.');
+   payload={visit_date:day(),assessment:text,plan:comment,nutrition_status:nutritionStatus,physical_status:physicalStatus,nutrition_details:nutritionDetails.trim(),physical_details:physicalDetails.trim()};
+  }else if(type==='nutrition_assessment'){if(!text)throw Error('Preencha o diagnóstico nutricional.');payload={visit_date:day(),nutrition_diagnosis:text,notes:comment};}
+  else if(type==='nutrition'||type==='workout'){
+   if(!guiding||!ack)throw Error('Avaliação médica não encontrada ou ainda não revisada.');
+   if(!title.trim())throw Error('Preencha o título.');
+   const values=items.filter(x=>x.name.trim()&&x.desc.trim()).map(x=>type==='nutrition'?{name:x.name.trim(),foods:x.desc.trim()}:{name:x.name.trim(),reps:x.desc.trim()});
+   if(values.length<1)throw Error('Preencha ao menos um item da ficha.');
+   payload={title:title.trim(),notes:text,reviewed_guidance_id:guiding.id,acknowledged:ack,[type==='nutrition'?'meals':'exercises']:values};
+  }else if(type==='message'){if(!text)throw Error('Escreva a mensagem.');payload={target:recipient,type:'atualizacao',body:text};}
+  else throw Error('Operação não autorizada.');
+  const {data,error}=await api.rpc('aplica_care',{action:'write',payload:{patient_id:patient.id,kind:type,specialty:role,data:payload,published:false}});
+  if(error||!data?.saved)throw Error('O servidor recusou a operação ou a sessão protegida.');
+  setFeedback('Rascunho salvo pelo servidor.');setNotes('');setPlan('');setTitle('');setItems([{name:'',desc:''}]);setAck(false);await onSaved();
+ }catch(err){setFeedback(String(err?.message||'Falha na operação.'))}finally{setBusy(false)}}
+ return <section className="clinical-form" aria-label="Formulários clínicos"><h3>Registro profissional · {patient.display_name}</h3><p>Rascunho não publicado. A API valida vínculos, função e sessão protegida.</p><form onSubmit={submit}>
+ <label>Tipo de documento<select value={type} onChange={e=>{setType(e.target.value);setFeedback('')}}>{options.map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label>
+ {(type==='nutrition'||type==='workout')&&<><label>Título<input required maxLength={160} value={title} onChange={e=>setTitle(e.target.value)}/></label><p>Itens do plano (até 20)</p>{items.map((x,i)=><div className="form-item" key={i}><input aria-label={'Nome do item '+(i+1)} placeholder={type==='nutrition'?'Refeição':'Exercício'} value={x.name} onChange={e=>setItems(old=>old.map((v,j)=>i===j?{...v,name:e.target.value}:v))}/><input aria-label={'Detalhe do item '+(i+1)} placeholder={type==='nutrition'?'Alimentos':'Séries/repetições'} value={x.desc} onChange={e=>setItems(old=>old.map((v,j)=>i===j?{...v,desc:e.target.value}:v))}/></div>)}<button type="button" className="secondary" disabled={items.length>=20} onClick={()=>setItems(old=>[...old,{name:'',desc:''}])}>+ Adicionar item</button><p>Orientação médica: {guiding?String(guiding.payload?.status||'Registrada'):'Não disponível'}</p><label className="form-check"><input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/> Revisei as orientações médicas.</label></>}
+ {type==='evaluation'&&<><label>Orientação para nutrição<select value={nutritionStatus} onChange={e=>setNutritionStatus(e.target.value)}><option value="nao_avaliado">Não avaliado</option><option value="sem_restricoes">Sem restrições</option><option value="restricoes">Com restrições</option></select></label>{nutritionStatus==='restricoes'&&<textarea required aria-label="Descrição das restrições alimentares" value={nutritionDetails} onChange={e=>setNutritionDetails(e.target.value)}/>}<label>Orientação para atividades físicas<select value={physicalStatus} onChange={e=>setPhysicalStatus(e.target.value)}><option value="nao_avaliado">Não avaliado</option><option value="sem_restricoes">Sem restrições</option><option value="restricoes">Com restrições</option></select></label>{physicalStatus==='restricoes'&&<textarea required aria-label="Descrição das restrições físicas" value={physicalDetails} onChange={e=>setPhysicalDetails(e.target.value)}/>}</>}
+ {type==='message'&&<label>Profissional destinatário<select value={recipient} onChange={e=>setRecipient(e.target.value)}>{['medico','nutricionista','personal'].filter(x=>x!==role).map(x=><option key={x} value={x}>{x}</option>)}</select></label>}
+ <label>{type==='nutrition_assessment'?'Diagnóstico nutricional':type==='evaluation'?'Avaliação clínica':type==='message'?'Mensagem':'Observações'}<textarea maxLength={6000} rows={4} required={['evaluation','nutrition_assessment','message'].includes(type)} value={notes} onChange={e=>setNotes(e.target.value)}/></label>
+ {(type==='evaluation'||type==='nutrition_assessment')&&<label>{type==='evaluation'?'Plano médico':'Informações complementares'}<textarea maxLength={6000} rows={3} required={type==='evaluation'} value={plan} onChange={e=>setPlan(e.target.value)}/></label>}
+ <button className="primary" type="submit" disabled={busy}>{busy?'Salvando...':'Salvar rascunho seguro'}</button>{feedback&&<p role="status">{feedback}</p>}
+ </form>{role==='personal'&&<div className="avatar-zone"><h3>Treinadores virtuais</h3><p>Ilustrações provisórias. Os arquivos de vídeo e avatares originais ainda precisam ser integrados e validados.</p><div className="avatar-pair">{['masculino','feminino'].map(k=><div key={k}><Avatar kind={k}/><strong>Avatar {k}</strong><small>Vídeo não cadastrado</small></div>)}</div></div>}</section>;
+}

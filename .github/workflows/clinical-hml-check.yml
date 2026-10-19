@@ -1,0 +1,23 @@
+name: Aplica HML - static build check
+on:
+  push:
+    branches: ["homologacao/clinica-seguranca-v2"]
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Verify HML safety configuration
+        run: node scripts/verify-hml.mjs
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build static mobile application
+        run: npm run build

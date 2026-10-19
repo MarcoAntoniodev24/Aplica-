@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Activity, ArrowLeft, CalendarDays, CheckCircle2, ClipboardList, Dumbbell, FileHeart, HeartPulse, LogOut, MessageSquareText, Printer, ShieldCheck, UserRound, Users } from 'lucide-react';
+import { Activity, ArrowLeft, CalendarDays, CheckCircle2, FileHeart, HeartPulse, LogOut, Printer, ShieldCheck, UserRound, Users } from 'lucide-react';
 import { configured, hmlConfigError, supabase } from './supabase';
 
 type Role = 'paciente'|'medico'|'nutricionista'|'personal'|'psicologo'|'administrador';
